@@ -16,8 +16,7 @@
         <exec-maven-plugin.version>3.0.0</exec-maven-plugin.version>
         <vertx.version>4.1.2</vertx.version>
         <junit-jupiter.version>5.7.0</junit-jupiter.version>
-        <main.verticle>com.videostream.transcode.MainVerticle</main.verticle>
-        <launcher.class>io.vertx.core.Launcher</launcher.class>
+        <launcher.class>com.videostream.transcode.App</launcher.class>
     </properties>
 
     <dependencyManagement>
@@ -157,8 +156,6 @@
                 <version>${exec-maven-plugin.version}</version>
                 <executions>
                     <execution>
-                        <id>main</id>
-                        <phase>none</phase>
                         <goals>
                             <goal>java</goal>
                         </goals>
@@ -166,10 +163,6 @@
                 </executions>
                 <configuration>
                     <mainClass>${launcher.class}</mainClass>
-                    <arguments>
-                        <argument>run</argument>
-                        <argument>${main.verticle}</argument>
-                    </arguments>
                 </configuration>
             </plugin>
         </plugins>
