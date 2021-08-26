@@ -34,6 +34,6 @@ public class UploadServiceVerticle extends AbstractVerticle {
                 httpRequest.resume();
             });
         });
-        vertx.createHttpServer().requestHandler(router).listen(8080);
+        vertx.createHttpServer().requestHandler(router).listen(8888);
     }
 }
