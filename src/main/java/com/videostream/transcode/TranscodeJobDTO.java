@@ -1,6 +1,6 @@
 package com.videostream.transcode;
 
-public class TranscodeDTO {
+public class TranscodeJobDTO {
   private String id;
   private String videoRef;
   private String targetFormat;
@@ -9,14 +9,14 @@ public class TranscodeDTO {
   private String fileName;
   private String outputFileName;
 
-  public TranscodeDTO(String id, String videoRef, String targetFormat, String targetAttribute) {
+  public TranscodeJobDTO(String id, String videoRef, String targetFormat, String targetAttribute) {
     this.id = id;
     this.videoRef = videoRef;
     this.targetFormat = targetFormat;
     this.targetAttribute = targetAttribute;
   }
 
-  public TranscodeDTO() {
+  public TranscodeJobDTO() {
     this.id = "0000000";
     this.videoRef = "videoRef";
     this.targetFormat = "mp4";
