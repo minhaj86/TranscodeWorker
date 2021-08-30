@@ -18,8 +18,22 @@ To package your application:
 
 To run your application:
 ```
-mqhost=localhost transcodejobqueue=queue1  mediadirectory=/home/mrl/media/  ./mvnw clean compile exec:java
+mqhost=localhost mediadirectory=/home/mrl/media/  ./mvnw clean compile exec:java
 ```
+
+== Testing
+
+To test Transcode Job Submission REST API:
+```
+curl -v -H 'Content-type: application/json' --data '{"id":"0000000","videoRef":"videoRef","targetFormat":"mp4","targetAttribute":"targetAttribute","fileId":101,"fileName":"b.mp4","outputFileName":"b13.mp4"}' localhost:8080/transcode/job
+
+```
+
+To test File Upload REST API:
+```
+curl -v -H 'Content-type: application/octet-stream' --data-binary @/home/mrl/Videos/ralphtest.mp4 localhost:8888/file/upload/101?filename=ralph.mp4
+```
+
 
 == Help
 
