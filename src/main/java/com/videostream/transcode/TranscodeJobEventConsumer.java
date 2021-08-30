@@ -1,9 +1,10 @@
 package com.videostream.transcode;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.WorkerExecutor;
+import io.vertx.core.impl.logging.Logger;
+import io.vertx.core.impl.logging.LoggerFactory;
 import net.bramp.ffmpeg.FFmpeg;
 import net.bramp.ffmpeg.FFmpegExecutor;
 import net.bramp.ffmpeg.FFprobe;
@@ -11,26 +12,20 @@ import net.bramp.ffmpeg.builder.FFmpegBuilder;
 
 import java.io.IOException;
 
-public class EventConsumerVerticle extends AbstractVerticle {
+public class TranscodeJobEventConsumer extends AbstractVerticle {
+    final static Logger logger = LoggerFactory.getLogger(TranscodeJobEventConsumer.class);
 
     private String mediaDirectory;
 
     @Override
     public void start() throws Exception {
         this.mediaDirectory = System.getenv("mediadirectory");
-        vertx.eventBus().<String>consumer("transcodejob", msg -> {
-            System.out.println("Event received: \n==================================================\n"+msg.body());
-            WorkerExecutor executor = vertx.createSharedWorkerExecutor("my-worker-pool");
+        vertx.eventBus().<TranscodeJobDTO>consumer("transcodejob", transcodeJobEvent -> {
+            logger.info("Event received: ================================================== "+transcodeJobEvent.body());
+//            System.out.println("Event received: \n==================================================\n"+transcodeJobEvent.body());
+            WorkerExecutor executor = vertx.createSharedWorkerExecutor("transcode-job-worker-pool");
             executor.executeBlocking(promise -> {
-                // Call some blocking API that takes a significant amount of time to return
-                ObjectMapper obj = new ObjectMapper();
-                TranscodeDTO transcodeJob = null;
-                try {
-                    transcodeJob = obj.readValue(msg.body(), TranscodeDTO.class);
-                } catch (JsonProcessingException e) {
-                    e.printStackTrace();
-                }
-                System.out.println(transcodeJob.getId());
+                TranscodeJobDTO transcodeJob = transcodeJobEvent.body();
                 FFmpeg ffmpeg = null;
                 FFprobe ffprobe = null;
                 try {
@@ -40,7 +35,7 @@ public class EventConsumerVerticle extends AbstractVerticle {
                     e.printStackTrace();
                 }
                 String fullFilePath = mediaDirectory + transcodeJob.getFileId() + "/" + transcodeJob.getFileName();
-                System.out.println("Media file path: "+fullFilePath);
+                logger.info("Media file path: "+fullFilePath);
                 FFmpegBuilder builder = new FFmpegBuilder()
                     .setInput(fullFilePath)     // Filename, or a FFmpegProbeResult
                     .overrideOutputFiles(true) // Override the output if it exists
@@ -62,10 +57,10 @@ public class EventConsumerVerticle extends AbstractVerticle {
                 // Or run a two-pass encode (which is better quality at the cost of being slower)
                 // executor.createTwoPassJob(builder).run();
                 promise.complete("Done");
-            }, res -> {
-                System.out.println("The result is: " + res.result());
+            }, asyncResult -> {
+                logger.info("The result is: " + asyncResult.result());
             });
-            msg.reply("asdfasfasdf");
+            transcodeJobEvent.reply(transcodeJobEvent.body());
         });
     }
 }
