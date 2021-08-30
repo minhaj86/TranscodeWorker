@@ -7,10 +7,16 @@ import io.vertx.core.impl.logging.Logger;
 import io.vertx.core.impl.logging.LoggerFactory;
 import net.bramp.ffmpeg.FFmpeg;
 import net.bramp.ffmpeg.FFmpegExecutor;
+import net.bramp.ffmpeg.FFmpegUtils;
 import net.bramp.ffmpeg.FFprobe;
 import net.bramp.ffmpeg.builder.FFmpegBuilder;
+import net.bramp.ffmpeg.job.FFmpegJob;
+import net.bramp.ffmpeg.probe.FFmpegProbeResult;
+import net.bramp.ffmpeg.progress.Progress;
+import net.bramp.ffmpeg.progress.ProgressListener;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 public class TranscodeJobEventConsumer extends AbstractVerticle {
     final static Logger logger = LoggerFactory.getLogger(TranscodeJobEventConsumer.class);
@@ -22,7 +28,6 @@ public class TranscodeJobEventConsumer extends AbstractVerticle {
         this.mediaDirectory = System.getenv("mediadirectory");
         vertx.eventBus().<TranscodeJobDTO>consumer("transcodejob", transcodeJobEvent -> {
             logger.info("Event received: ================================================== "+transcodeJobEvent.body());
-//            System.out.println("Event received: \n==================================================\n"+transcodeJobEvent.body());
             WorkerExecutor executor = vertx.createSharedWorkerExecutor("transcode-job-worker-pool");
             executor.executeBlocking(promise -> {
                 TranscodeJobDTO transcodeJob = transcodeJobEvent.body();
@@ -53,7 +58,34 @@ public class TranscodeJobEventConsumer extends AbstractVerticle {
                     .setStrict(FFmpegBuilder.Strict.EXPERIMENTAL) // Allow FFmpeg to use experimental specs
                     .done();
                 FFmpegExecutor ffmpegExecutor = new FFmpegExecutor(ffmpeg, ffprobe);
-                ffmpegExecutor.createJob(builder).run();
+                FFmpegProbeResult in = null;
+                try {
+                    in = ffprobe.probe(fullFilePath);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                final FFmpegProbeResult fin = in;
+
+                FFmpegJob ffmpegJob = ffmpegExecutor.createJob(builder, new ProgressListener() {
+                    final double duration_ns = fin.getFormat().duration * TimeUnit.SECONDS.toNanos(1);
+
+                    @Override
+                    public void progress(Progress progress) {
+                        double percentage = progress.out_time_ns / duration_ns;
+
+                        // Print out interesting information about the progress
+                        logger.info(String.format(
+                            "[%.0f%%] status:%s frame:%d time:%s ms fps:%.0f speed:%.2fx",
+                            percentage * 100,
+                            progress.status,
+                            progress.frame,
+                            FFmpegUtils.toTimecode(progress.out_time_ns, TimeUnit.NANOSECONDS),
+                            progress.fps.doubleValue(),
+                            progress.speed
+                        ));
+                    }
+                });
+                ffmpegJob.run();
                 // Or run a two-pass encode (which is better quality at the cost of being slower)
                 // executor.createTwoPassJob(builder).run();
                 promise.complete("Done");
